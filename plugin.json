@@ -1,0 +1,6 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "codex-migrate-to-agy",
+  "version": "0.1.0",
+  "description": "Finds your OpenAI Codex CLI skills, prompts, subagents, plugins, MCP servers, rules and hooks, shows a migration plan, and configures Antigravity after you approve."
+}
