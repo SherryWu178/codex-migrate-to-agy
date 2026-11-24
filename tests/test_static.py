@@ -28,7 +28,7 @@ def test_scripts_have_no_mock_paths():
 def test_scripts_are_stdlib_only():
     allowed = {
         "__future__", "argparse", "datetime", "hashlib", "json",
-        "os", "pathlib", "re", "shutil", "sys", "tomllib",
+        "os", "pathlib", "re", "shutil", "subprocess", "sys", "tomllib",
     }
     for script in sorted(SCRIPTS.glob("*.py")):
         tree = ast.parse(script.read_text(encoding="utf-8"))
@@ -38,3 +38,27 @@ def test_scripts_are_stdlib_only():
                     assert a.name.split(".")[0] in allowed, f"{script.name} imports {a.name}"
             if isinstance(node, ast.ImportFrom) and node.module:
                 assert node.module.split(".")[0] in allowed, f"{script.name} imports {node.module}"
+
+
+def test_subprocess_only_used_for_codex_version():
+    """The scanner may spawn exactly one thing: `codex --version`."""
+    for script in sorted(SCRIPTS.glob("*.py")):
+        tree = ast.parse(script.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            is_sub = (
+                isinstance(func, ast.Attribute)
+                and isinstance(func.value, ast.Name)
+                and func.value.id == "subprocess"
+            )
+            if not is_sub:
+                continue
+            assert func.attr == "run", f"{script.name}: only subprocess.run is allowed"
+            argv = node.args[0]
+            assert isinstance(argv, ast.List) and len(argv.elts) == 2, f"{script.name}: argv must be [binary, '--version']"
+            flag = argv.elts[1]
+            assert isinstance(flag, ast.Constant) and flag.value == "--version", f"{script.name}: only --version may be invoked"
+            kw = {k.arg: k.value for k in node.keywords}
+            assert "timeout" in kw, f"{script.name}: subprocess.run must have a timeout"
